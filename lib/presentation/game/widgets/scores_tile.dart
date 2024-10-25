@@ -5,14 +5,19 @@ class ScoresTile extends StatelessWidget {
     super.key,
     required this.currentScore,
     required this.bestScore,
+    this.isPortrait = false,
   });
 
   final String currentScore;
   final String bestScore;
+  final bool isPortrait;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Flex(
+      direction: isPortrait ? Axis.horizontal : Axis.vertical,
+      mainAxisAlignment:
+          isPortrait ? MainAxisAlignment.spaceBetween : MainAxisAlignment.end,
       children: [
         Column(
           children: [
@@ -32,7 +37,7 @@ class ScoresTile extends StatelessWidget {
             ),
           ],
         ),
-        const Spacer(),
+        if (!isPortrait) const SizedBox(height: 16),
         Column(
           children: [
             Text(

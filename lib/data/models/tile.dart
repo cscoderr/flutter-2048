@@ -9,4 +9,12 @@ class Tile {
   Tile operator *(int operand) {
     return Tile(number * operand);
   }
+
+  factory Tile.fromJson(Map<String, dynamic> json) => Tile(json['number']);
+
+  Map<String, dynamic> toJson() {
+    return {
+      'number': number,
+    };
+  }
 }

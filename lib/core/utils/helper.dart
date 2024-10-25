@@ -1,17 +1,18 @@
 import 'dart:math';
 
 import 'package:collection/collection.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide GridTile;
 import 'package:flutter_2048/core/core.dart';
 import 'package:flutter_2048/data/data.dart';
-import 'package:flutter_2048/presentation/game/game.dart';
+import 'package:flutter_2048/domain/domain.dart';
 
 Cell getRotatedCellAt(int row, int col, int numRotations) {
   return switch (numRotations) {
     0 => Cell(row, col),
-    1 => Cell(gridSize - 1 - col, row),
-    2 => Cell(gridSize - 1 - row, gridSize - 1 - col),
-    3 => Cell(col, gridSize - 1 - row),
+    1 => Cell(AppConstants.maxGridSize - 1 - col, row),
+    2 => Cell(
+        AppConstants.maxGridSize - 1 - row, AppConstants.maxGridSize - 1 - col),
+    3 => Cell(col, AppConstants.maxGridSize - 1 - row),
     _ => throw ArgumentError('numRotations must be an integer between 0 and 3')
   };
 }
@@ -39,6 +40,120 @@ bool hasGridChanged(List<GridTileMovement> gridTileMovements) {
         element.fromGridTile == null ||
         element.fromGridTile?.cell != element.toGridTile.cell,
   );
+}
+
+(List<List<Tile?>>, List<GridTileMovement>) makeMove(
+    List<List<Tile?>> grids, Direction direction) {
+  final numRotations = switch (direction) {
+    Direction.west => 0,
+    Direction.south => 1,
+    Direction.east => 2,
+    Direction.north => 3,
+  };
+
+  var updatedGrid = grids.rotate(numRotations);
+
+  final gridTileMovements = <GridTileMovement>[];
+
+  updatedGrid = List.generate(
+    updatedGrid.length,
+    (currentRowIndex) {
+      final tiles = updatedGrid[currentRowIndex];
+      int? lastSeenTileIndex;
+      int? lastSeenEmptyIndex;
+      for (int currentColIndex = 0;
+          currentColIndex < tiles.length;
+          currentColIndex++) {
+        final currentTile = tiles[currentColIndex];
+
+        if (currentTile == null) {
+          // We are looking at an empty cell in the grid.
+          lastSeenEmptyIndex ??= currentColIndex;
+          continue;
+        }
+
+        final currentGridTile = GridTile(
+            getRotatedCellAt(
+              currentRowIndex,
+              currentColIndex,
+              numRotations,
+            ),
+            currentTile);
+
+        if (lastSeenTileIndex == null) {
+          if (lastSeenEmptyIndex == null) {
+            gridTileMovements.add(GridTileMovement.noop(currentGridTile));
+            lastSeenTileIndex = currentColIndex;
+          } else {
+            final targetCell = getRotatedCellAt(
+                currentRowIndex, lastSeenEmptyIndex, numRotations);
+            final targetGridTile = GridTile(targetCell, currentTile);
+            gridTileMovements
+                .add(GridTileMovement.shift(currentGridTile, targetGridTile));
+
+            tiles[lastSeenEmptyIndex] = currentTile;
+            tiles[currentColIndex] = null;
+            lastSeenTileIndex = lastSeenEmptyIndex;
+            lastSeenEmptyIndex++;
+          }
+        } else {
+          if (tiles[lastSeenTileIndex]!.number == currentTile.number) {
+            // Shift the tile to the location where it will be merged.
+            final targetCell = getRotatedCellAt(
+                currentRowIndex, lastSeenTileIndex, numRotations);
+            gridTileMovements.add(
+              GridTileMovement.shift(
+                currentGridTile,
+                GridTile(targetCell, currentTile),
+              ),
+            );
+
+            // Merge the current tile with the previous tile.
+            final addedTile = currentTile * 2;
+            gridTileMovements.add(
+              GridTileMovement.add(
+                GridTile(targetCell, addedTile),
+              ),
+            );
+
+            tiles[lastSeenTileIndex] = addedTile;
+            tiles[currentColIndex] = null;
+            lastSeenTileIndex = null;
+            lastSeenEmptyIndex ??= currentColIndex;
+          } else {
+            if (lastSeenEmptyIndex == null) {
+              // Keep the tile at its same location.
+
+              gridTileMovements.add(GridTileMovement.noop(currentGridTile));
+            } else {
+              // Shift the current tile towards the previous tile.
+              final targetCell = getRotatedCellAt(
+                  currentRowIndex, lastSeenEmptyIndex, numRotations);
+              final targetGridTile = GridTile(targetCell, currentTile);
+              gridTileMovements
+                  .add(GridTileMovement.shift(currentGridTile, targetGridTile));
+
+              tiles[lastSeenEmptyIndex] = currentTile;
+              tiles[currentColIndex] = null;
+              lastSeenEmptyIndex++;
+            }
+            lastSeenTileIndex++;
+          }
+        }
+      }
+      return tiles;
+    },
+  );
+
+  // Rotate the grid back to its original state.
+  updatedGrid =
+      updatedGrid.rotate((-numRotations).floorMod(Direction.values.length));
+  return (updatedGrid, gridTileMovements);
+}
+
+bool checkIfIsGameOver(List<List<Tile?>> grids) {
+  return Direction.values
+      .none((value) => hasGridChanged(makeMove(grids, value).$2));
 }
 
 Color gridTileColor(int number, bool isDarkMode) {

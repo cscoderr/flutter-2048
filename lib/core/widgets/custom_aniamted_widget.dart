@@ -28,7 +28,7 @@ class _CustomAnimatedScaleState extends State<CustomAnimatedScale>
     _animationController =
         AnimationController(vsync: this, duration: widget.duration);
     _animation = Tween(begin: widget.scale, end: 1.0).animate(
-        CurvedAnimation(parent: _animationController, curve: Curves.easeIn));
+        CurvedAnimation(parent: _animationController, curve: Curves.easeInOut));
     _animationController.forward();
   }
 

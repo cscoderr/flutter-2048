@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_2048/core/core.dart';
-import 'package:flutter_2048/data/data.dart';
+import 'package:flutter_2048/domain/domain.dart';
 
 class GridTileWidget extends StatelessWidget {
   const GridTileWidget({
@@ -19,8 +19,8 @@ class GridTileWidget extends StatelessWidget {
     final isDarkMode =
         Theme.of(context).colorScheme.brightness == Brightness.dark;
     return CustomAnimatedScale(
-      duration: const Duration(milliseconds: 300),
-      scale: gridTileMovement.fromGridTile == null ? 0 : 1,
+      duration: const Duration(milliseconds: 200),
+      scale: gridTileMovement.fromGridTile == null ? 0.0 : 1.0,
       child: AnimatedContainer(
         height: tileSize,
         width: tileSize,
